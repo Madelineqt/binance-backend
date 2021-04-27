@@ -21,8 +21,8 @@ const corsOptions = {
     origin: '*',
   }
 app.use(cors(corsOptions))
-app.listen(8080, () => {
-    console.log(`Listening in port 8080.`);
+app.listen(process.env.PORT || 80, () => {
+    console.log(`Listening`);
 });
 const username = process.env.USER
 const password = process.env.PASSWORD
