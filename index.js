@@ -7,6 +7,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 const api = require('binance');
 const jwt = require('jsonwebtoken')
+const { default: axios } = require("axios")
 const binanceRest = new api.BinanceRest({
     key: process.env.API_KEY, 
     secret: process.env.API_SECRET, 
@@ -21,7 +22,7 @@ const corsOptions = {
     origin: '*',
   }
 app.use(cors(corsOptions))
-app.listen(process.env.PORT || 80, () => {
+app.listen(process.env.PORT || 8000, () => {
     console.log(`Listening`);
 });
 const username = process.env.USER
@@ -76,11 +77,21 @@ app.get('/test',jwtmiddleware, async (req,res) => {
     const date2 = new Date()
     const timestamp2 = date2.getTime()
     const btccandles = await binanceRest.klines({symbol:'BTCUSDT', interval:'1d', startTime:timestamp, endTime:timestamp2})
+    const deposit = await binanceRest.depositHistory({})
+    console.log(deposit)
+    var totaldeposited = 0
+    deposit.depositList.forEach(async (dep, i) =>  {
+        const data = await axios.get(`https://min-api.cryptocompare.com/data/pricehistorical?fsym=${dep.asset}&tsyms=USD&ts=${dep.insertTime}`).then(res =>{return res.data})
+        const value = data[`${dep.asset.toUpperCase()}`]['USD']
+        console.log(value)
+        totaldeposited = totaldeposited + (dep.amount * value)
+    })
     // const btcvalue = await binanceRest.tickerPrice({symbol:'BTCUSDT'})
     console.log(btccandles)
     binanceRest.accountSnapshot({type:'SPOT',limit:30, startTime:timestamp, endTime:timestamp2})
     .then(data => {
         // data.snapshotVos = data.snapshotVos.map(element => element.updateTime = element.updateTime + 1000)
+        data.deposited = totaldeposited
         data.snapshotVos.forEach((element,index) => {
             data.snapshotVos[index].updateTime = data.snapshotVos[index].updateTime + 1000
             data.snapshotVos[index].total = parseFloat(btccandles[btccandles.findIndex((e) => e.openTime == element.updateTime)].open) * element.data.totalAssetOfBtc
